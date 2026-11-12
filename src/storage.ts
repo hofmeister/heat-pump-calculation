@@ -35,7 +35,7 @@ export function defaultState(): AppState {
     startDate: DEFAULT_START_DATE,
     endDate: null,
     band: 'KWH_GE15000',
-    // The spreadsheet used the Hera bill (0.399 €/kWh) for 2026 instead of Eurostat.
+    // The spreadsheet used the supplier bill (0.399 €/kWh) for 2026 instead of Eurostat.
     priceOverrides: { '2026-S1': 0.399, '2026-S2': 0.399 },
   };
 }
