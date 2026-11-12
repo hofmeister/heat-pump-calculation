@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Heat Pump Calculator</title>
+    <meta name="description" content="Estimate heat-pump heating and cooling electricity, cost and capacity deficits from real historical weather and electricity prices." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%232a78d6'/></svg>" />
+  </head>
+  <body>
+    <header class="top">
+      <div>
+        <h1>Heat Pump Calculator</h1>
+        <p class="sub">Heating &amp; cooling electricity, cost and capacity check, using real hourly weather
+          (Open-Meteo) and household electricity prices (Eurostat). Your specs are saved in this browser only.</p>
+      </div>
+      <div class="top-actions">
+        <button id="run" class="primary">Fetch data &amp; calculate</button>
+      </div>
+    </header>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <main class="layout">
+      <aside id="inputs" class="inputs"></aside>
+      <section id="results" class="results"></section>
+    </main>
+    <footer class="foot">
+      Data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) ·
+      <a href="https://ec.europa.eu/eurostat/databrowser/view/nrg_pc204/default/table" target="_blank" rel="noopener">Eurostat nrg_pc204</a>.
+      Model: steady-state day/night balance; no thermal mass, no per-room distribution. Indicative only.
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
