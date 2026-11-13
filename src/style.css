@@ -231,3 +231,57 @@ button.info[aria-expanded='true'] { background: var(--accent); color: var(--acce
 @media (max-width: 900px) {
   button.info { width: 24px; height: 24px; min-height: 0; font-size: 14px; }
 }
+
+/* ------------------------------------------------------------------ language picker */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.top-actions { display: flex; gap: 8px; align-items: center; }
+.lang select { width: auto; }
+@media (max-width: 900px) {
+  .top { position: relative; }
+  .top-actions { display: flex; position: absolute; top: 12px; right: 12px; }
+  .top-actions #run { display: none; }
+  .top h1 { padding-right: 110px; }
+}
+
+/* ------------------------------------------------------------------ AI assistant */
+.ai-card { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+.ai-card h2 { margin-bottom: 6px; }
+.ai-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 6px 12px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text);
+  text-decoration: none; font-weight: 600;
+}
+.btn:hover { border-color: var(--muted); }
+.ai-actions .btn, .ai-actions button { flex: 1 1 auto; }
+.ai-paste-label { display: block; color: var(--text-2); margin: 4px 0; font-size: 13px; }
+.ai-paste-row { display: flex; gap: 8px; align-items: stretch; }
+.ai-paste-row textarea, .ai-fallback {
+  flex: 1; min-width: 0; font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; resize: vertical;
+}
+.ai-fallback { width: 100%; margin-top: 8px; }
+.ai-banner-wrap { max-width: 1500px; margin: 0 auto; padding: 0 16px; }
+.ai-banner {
+  display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; margin: 8px 0 0;
+  padding: 10px 12px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+.ai-banner p { margin: 0 0 4px; }
+.ai-banner ul { margin: 0; padding-left: 18px; color: var(--warn-ink); font-size: 13px; }
+.ai-banner .ai-issues { color: var(--warn-ink); font-weight: 600; font-size: 13px; }
+.ai-banner-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+#ai-dismiss { font-size: 18px; line-height: 1; padding: 4px 10px; }
+input.ai-changed { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.results-tools { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+@media (max-width: 900px) {
+  .ai-banner-wrap { padding: 0 12px; }
+  .ai-paste-row { flex-direction: column; }
+  .results-tools button { width: 100%; }
+  .ai-paste-row textarea, .ai-fallback { font-size: 16px; }
+}
+@media (max-width: 600px) {
+  .ai-banner { flex-direction: column; gap: 8px; }
+  .ai-banner-actions { align-self: stretch; }
+  .ai-banner-actions #ai-undo { flex: 1; }
+}

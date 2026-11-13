@@ -9,10 +9,10 @@
  * exists this module does nothing.
  */
 import { DEFAULT_SPECS } from './defaults';
-import type { Results } from './main';
-import type { MonthlyAreas, Specs, YearSummary } from './model';
+import type { MonthlyAreas, Results, Specs, YearSummary } from './model';
 import { CONSUMPTION_BANDS } from './prices';
 import { HELP } from './specHelp';
+import { applyChanges, InputError } from './importer';
 import * as store from './storage';
 
 export interface AppApi {
@@ -95,63 +95,6 @@ const areasSchema = {
 
 const SEMESTER = '^\\d{4}-S[12]$';
 const DATE = '^\\d{4}-\\d{2}-\\d{2}$';
-
-class InputError extends Error {}
-
-function applyChanges(base: store.AppState, input: Record<string, unknown>): store.AppState {
-  let next = structuredClone(base);
-  const specs = (input.specs ?? {}) as Record<string, unknown>;
-  for (const [k, v] of Object.entries(specs)) {
-    if (k === 'comfortEnabled') {
-      if (typeof v !== 'boolean') throw new InputError('specs.comfortEnabled must be a boolean.');
-      next.specs.comfortEnabled = v;
-    } else if (k in SPEC_DOCS && k !== 'fallbackTariff') {
-      if (k === 'designHeatLoadOverrideKw' && v === null) next.specs.designHeatLoadOverrideKw = null;
-      else if (typeof v === 'number' && Number.isFinite(v)) (next.specs as unknown as Record<string, number>)[k] = v;
-      else throw new InputError(`specs.${k} must be a number.`);
-    } else throw new InputError(`Unknown spec "${k}". Call get_inputs for the list.`);
-  }
-  if (input.solarAreasAllMonths) {
-    for (const [k, v] of Object.entries(input.solarAreasAllMonths as Record<string, unknown>)) {
-      if (!(k in AREA_DOCS)) throw new InputError(`Unknown solar area field "${k}".`);
-      if (typeof v !== 'number' || !Number.isFinite(v) || v < 0) throw new InputError(`solarAreasAllMonths.${k} must be a non-negative number.`);
-      next.specs.solarAreas.forEach((a) => (a[k as keyof MonthlyAreas] = v));
-    }
-  }
-  if (input.fallbackTariff !== undefined) {
-    if (input.fallbackTariff !== null && (typeof input.fallbackTariff !== 'number' || input.fallbackTariff <= 0)) throw new InputError('fallbackTariff must be a positive number (€/kWh) or null.');
-    next.specs.fallbackTariff = input.fallbackTariff as number | null;
-  }
-  if (input.location) {
-    const l = input.location as Record<string, unknown>;
-    const lat = Number(l.latitude), lon = Number(l.longitude);
-    if (!Number.isFinite(lat) || Math.abs(lat) > 90 || !Number.isFinite(lon) || Math.abs(lon) > 180) throw new InputError('location needs a valid latitude and longitude.');
-    const cc = typeof l.countryCode === 'string' ? l.countryCode.toUpperCase() : next.location.countryCode;
-    if (!/^[A-Z]{2}$/.test(cc)) throw new InputError('location.countryCode must be a 2-letter ISO code.');
-    // Applied before priceOverrides so overrides given in the same call survive a country change.
-    next = store.withLocation(next, { name: typeof l.name === 'string' && l.name ? l.name : `${lat.toFixed(3)}, ${lon.toFixed(3)}`, latitude: lat, longitude: lon, countryCode: cc }).state;
-  }
-  if (input.priceOverrides) {
-    for (const [sem, v] of Object.entries(input.priceOverrides as Record<string, unknown>)) {
-      if (!new RegExp(SEMESTER).test(sem)) throw new InputError(`Bad semester "${sem}" (use e.g. 2025-S2).`);
-      if (v !== null && (typeof v !== 'number' || v <= 0)) throw new InputError(`priceOverrides.${sem} must be a positive number or null.`);
-      next.priceOverrides[sem] = v as number | null;
-    }
-  }
-  if (input.startDate !== undefined) {
-    if (typeof input.startDate !== 'string' || !new RegExp(DATE).test(input.startDate) || input.startDate < '1940-01-01') throw new InputError('startDate must be YYYY-MM-DD, from 1940 on.');
-    next.startDate = input.startDate;
-  }
-  if (input.endDate !== undefined) {
-    if (input.endDate !== null && (typeof input.endDate !== 'string' || !new RegExp(DATE).test(input.endDate))) throw new InputError('endDate must be YYYY-MM-DD or null (= yesterday).');
-    next.endDate = input.endDate as string | null;
-  }
-  if (input.band !== undefined) {
-    if (!CONSUMPTION_BANDS.some((b) => b.code === input.band)) throw new InputError(`band must be one of ${CONSUMPTION_BANDS.map((b) => b.code).join(', ')}.`);
-    next.band = input.band as store.AppState['band'];
-  }
-  return next;
-}
 
 // ------------------------------------------------------------------ output helpers
 
@@ -287,7 +230,7 @@ function tools(api: AppApi): ToolDef[] {
         },
       },
       execute: (input) => {
-        const next = applyChanges(api.getState(), input);
+        const next = applyChanges(api.getState(), input as Record<string, unknown>);
         api.applyState(next, `Inputs updated by an AI agent (${Object.keys(input).join(', ')}).`);
         const needsFetch = api.needsFetch();
         const r = needsFetch ? null : api.compute();

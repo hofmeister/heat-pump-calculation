@@ -1,9 +1,10 @@
 /** Minimal dependency-free stacked monthly bar chart (heating vs cooling electricity). */
+import { fmt as tpl, L as loc, n0 } from './i18n';
 import type { DayResult } from './model';
 
 interface MonthBar { key: string; heat: number; cool: number; cost: number }
 
-const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
+const fmt = (n: number) => n0(n);
 
 function niceMax(v: number): number {
   if (v <= 0) return 1;
@@ -52,7 +53,7 @@ function draw(host: HTMLElement, rows: DayResult[], width: number) {
   const r = Math.min(4, barW / 2);
 
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * max);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Monthly heat-pump electricity, heating and cooling stacked">`;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${loc().results.chart.aria}">`;
   for (const t of ticks) {
     svg += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)" />`;
     const label = compact && t >= 1000 ? `${+(t / 1000).toFixed(1)}k` : fmt(t);
@@ -81,7 +82,7 @@ function draw(host: HTMLElement, rows: DayResult[], width: number) {
   svg += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--muted)" /></svg>`;
 
   host.innerHTML = `
-    <div class="legend"><span><i style="background:var(--series-heat)"></i>Heating</span><span><i style="background:var(--series-cool)"></i>Cooling</span><span>kWh electricity per month</span></div>
+    <div class="legend"><span><i style="background:var(--series-heat)"></i>${loc().results.chart.heating}</span><span><i style="background:var(--series-cool)"></i>${loc().results.chart.cooling}</span><span>${loc().results.chart.unit}</span></div>
     <div class="chart">${svg}<div class="tip" hidden></div></div>`;
   const chart = host.querySelector<HTMLElement>('.chart')!;
   const tip = host.querySelector<HTMLElement>('.tip')!;
@@ -90,7 +91,8 @@ function draw(host: HTMLElement, rows: DayResult[], width: number) {
     const i = t?.getAttribute?.('data-i');
     if (i === null || i === undefined || !t || !chart.contains(t)) { tip.hidden = true; return; }
     const b = bars[Number(i)];
-    tip.innerHTML = `<b>${b.key}</b><br>Heating ${fmt(b.heat)} kWh<br>Cooling ${fmt(b.cool)} kWh<br>Cost € ${fmt(b.cost)}`;
+    const c = loc().results.chart;
+    tip.innerHTML = `<b>${b.key}</b><br>${tpl(c.tipHeating, { v: fmt(b.heat) })}<br>${tpl(c.tipCooling, { v: fmt(b.cool) })}<br>${tpl(c.tipCost, { v: fmt(b.cost) })}`;
     tip.hidden = false;
     const rect = chart.getBoundingClientRect();
     const px = e.clientX - rect.left;

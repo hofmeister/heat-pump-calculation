@@ -381,3 +381,12 @@ export function capacityCheck(s: Specs, rows: DayResult[], maxHourlyTemp: number
     maxHourlyTemp,
   };
 }
+
+/** Everything the UI, AI export and WebMCP tools show for one calculation. */
+export interface Results {
+  rows: DayResult[];
+  years: YearSummary[];
+  tot: YearSummary;
+  cap: CapacityCheck;
+  skipped: string[];
+}

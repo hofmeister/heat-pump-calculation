@@ -169,7 +169,7 @@ export async function fetchWeather(
   start: string,
   end: string,
   cached: WeatherData | null,
-  onProgress?: (msg: string) => void,
+  onProgress?: (p: { kind: 'archive' | 'recent'; from: string; to: string }) => void,
   signal?: AbortSignal,
 ): Promise<WeatherData> {
   const w = emptyWeather(lat, lon, start, end);
@@ -192,7 +192,7 @@ export async function fetchWeather(
   }
 
   if (fetchFrom <= end) {
-    onProgress?.(`Downloading historical weather ${fetchFrom} → ${end}…`);
+    onProgress?.({ kind: 'archive', from: fetchFrom, to: end });
     await fetchInto(w, 'https://archive-api.open-meteo.com/v1/archive', fetchFrom, end, signal);
   }
 
@@ -203,7 +203,7 @@ export async function fetchWeather(
     const earliestForecast = addDays(todayLocal(), -90);
     const from = recentStart < earliestForecast ? earliestForecast : recentStart;
     if (from <= end) {
-      onProgress?.(`Filling recent days ${from} → ${end} from forecast model…`);
+      onProgress?.({ kind: 'recent', from, to: end });
       await fetchInto(w, 'https://api.open-meteo.com/v1/forecast', from, end, signal);
     }
   }

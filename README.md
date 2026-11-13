@@ -4,7 +4,9 @@
 
 [![Deploy to GitHub Pages](https://github.com/hofmeister/heat-pump-calculation/actions/workflows/deploy.yml/badge.svg)](https://github.com/hofmeister/heat-pump-calculation/actions/workflows/deploy.yml)
 
-It runs entirely in your browser and works on phones too. Your inputs are saved only in your browser.
+It runs entirely in your browser and works on phones too. Your inputs are saved only in your browser. Available in English, Italiano, Français and Español.
+
+**Let your AI assistant fill it in.** Press *Open in ChatGPT* / *Open in Claude* (or *Copy prompt for any AI*) in the app. Give the assistant your heat pump datasheet, energy report and electricity bill. It answers with a link that opens the calculator filled in and calculating. AI assistants can read the instructions directly at [`llms.txt`](https://hofmeister.github.io/heat-pump-calculation/llms.txt).
 
 A small browser app (TypeScript + Vite, no backend) that estimates how much electricity and money heat pumps use for heating and cooling a building. It also checks whether the pumps have enough capacity. It is a port of a heating & cooling analysis spreadsheet. The unit tests check the model against that spreadsheet's formulas, evaluated by LibreOffice on a synthetic example house, to 6 decimals. The defaults are a generic example house in Berlin; replace them with your own building's figures.
 
@@ -20,7 +22,7 @@ The end date defaults to "yesterday", so the period keeps rolling forward. You c
 
 ## Help for every input
 
-Every input has an ⓘ button that explains what the number means and where to find it: which datasheet table, which line of an energy report, how to read it off your bill, or a rule of thumb when you don't have it. The same texts (`src/specHelp.ts`) are returned to AI agents by the `get_inputs` tool.
+Every input has an ⓘ button that explains what the number means and where to find it: which datasheet table, which line of an energy report, how to read it off your bill, or a rule of thumb when you don't have it. The English texts (`src/locales/help.en.ts`) also feed `llms.txt` and the WebMCP `get_inputs` tool.
 
 ## Storage
 
@@ -49,6 +51,21 @@ npm run dev      # local dev server
 npm test         # model + aggregation tests (incl. reproduction of the spreadsheet)
 npm run build    # static site in dist/ (relative paths, host anywhere)
 ```
+
+## Filling it in with an AI assistant
+
+Most people will ask ChatGPT, Claude or Gemini to help. Those assistants can't run the calculator, so the app is built for a hand-off:
+
+1. **Prompt:** *Open in ChatGPT* / *Open in Claude* starts a chat that points the assistant at [`llms.txt`](https://hofmeister.github.io/heat-pump-calculation/llms.txt), including anything you've already entered. *Copy prompt for any AI* copies the full instructions instead, for assistants that can't browse.
+2. **Link back:** the assistant collects your figures (reading datasheets, reports and bills you upload) and replies with a link such as `…/heat-pump-calculation/#place=Lyon%2C%20France&pumpCount=1&heatCapMinus7=7.9&copPlus7=4.4`. Opening it fills in the inputs, highlights what changed (with **Undo**), looks up the place, and calculates.
+3. **Paste instead:** the same `key=value` lines (or JSON) can be pasted into the app's "Paste the AI's answer" box.
+4. **Discuss results:** *Copy results for your AI* copies a summary, a per-year table and a link with every input, so the assistant can explain the results and suggest changes as a new link.
+
+The inputs sit in the URL fragment (after `#`), which browsers never send to the server. `llms.txt`, the copied prompt and the WebMCP tools are all generated from the same help texts (`src/locales/help.en.ts`) and parser (`src/importer.ts`).
+
+## Languages
+
+The UI and all help texts are available in English, Italian, French and Spanish (`src/locales/`). The language follows the browser and can be changed in the header; the choice is saved locally. English is the source: tests check that every translation has the same keys, placeholders and HTML tags.
 
 ## AI agent tools (WebMCP)
 
