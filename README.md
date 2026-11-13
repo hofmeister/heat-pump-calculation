@@ -1,5 +1,11 @@
 # Heat Pump Calculator
 
+### ▶ [Open the app: hofmeister.github.io/heat-pump-calculation](https://hofmeister.github.io/heat-pump-calculation/)
+
+[![Deploy to GitHub Pages](https://github.com/hofmeister/heat-pump-calculation/actions/workflows/deploy.yml/badge.svg)](https://github.com/hofmeister/heat-pump-calculation/actions/workflows/deploy.yml)
+
+It runs entirely in your browser and works on phones too. Your inputs are saved only in your browser.
+
 A small browser app (TypeScript + Vite, no backend) that estimates how much electricity and money heat pumps use for heating and cooling a building. It also checks whether the pumps have enough capacity. It is a port of a heating & cooling analysis spreadsheet. The unit tests check the model against that spreadsheet's formulas, evaluated by LibreOffice on a synthetic example house, to 6 decimals. The defaults are a generic example house in Berlin; replace them with your own building's figures.
 
 ## Data sources (pulled automatically)
