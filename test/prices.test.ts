@@ -22,9 +22,9 @@ describe('tariffs', () => {
   });
 
   it('drops bill-specific overrides when the country changes', () => {
-    const s = defaultState();
+    const s = { ...defaultState(), priceOverrides: { '2026-S1': 0.41 } };
     expect(withLocation(s, { ...s.location, name: 'x' }).state.priceOverrides).toEqual(s.priceOverrides);
-    const dk = withLocation(s, { name: 'Aarhus', latitude: 56.16, longitude: 10.21, countryCode: 'DK' });
+    const dk = withLocation(s, { name: 'Vienna', latitude: 48.21, longitude: 16.37, countryCode: 'AT' });
     expect(dk.state.priceOverrides).toEqual({});
     expect(dk.clearedOverrides).toBe(true);
   });

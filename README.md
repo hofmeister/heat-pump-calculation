@@ -1,6 +1,12 @@
 # Heat Pump Calculator
 
-A small browser app (TypeScript + Vite, no backend) that estimates how much electricity and money heat pumps use for heating and cooling a building. It also checks whether the pumps have enough capacity. It is based on the Villa Visione heating & cooling analysis spreadsheet (translated from Italian): the defaults reproduce that spreadsheet, and the unit tests check the result to 6 decimals.
+### ▶ [Open the app: hofmeister.github.io/heat-pump-calculation](https://hofmeister.github.io/heat-pump-calculation/)
+
+[![Deploy to GitHub Pages](https://github.com/hofmeister/heat-pump-calculation/actions/workflows/deploy.yml/badge.svg)](https://github.com/hofmeister/heat-pump-calculation/actions/workflows/deploy.yml)
+
+It runs entirely in your browser and works on phones too. Your inputs are saved only in your browser.
+
+A small browser app (TypeScript + Vite, no backend) that estimates how much electricity and money heat pumps use for heating and cooling a building. It also checks whether the pumps have enough capacity. It is a port of a heating & cooling analysis spreadsheet. The unit tests check the model against that spreadsheet's formulas, evaluated by LibreOffice on a synthetic example house, to 6 decimals. The defaults are a generic example house in Berlin; replace them with your own building's figures.
 
 ## Data sources (pulled automatically)
 
@@ -11,6 +17,10 @@ A small browser app (TypeScript + Vite, no backend) that estimates how much elec
 | Address search | Open-Meteo geocoding |
 
 The end date defaults to "yesterday", so the period keeps rolling forward. You can override the price for any semester, for example with the rate from your own bill. Semesters that have no Eurostat value use "my current tariff", or the latest Eurostat price if that field is left blank. Overrides are cleared when the country changes, because they belong to a bill from one country.
+
+## Help for every input
+
+Every input has an ⓘ button that explains what the number means and where to find it: which datasheet table, which line of an energy report, how to read it off your bill, or a rule of thumb when you don't have it. The same texts (`src/specHelp.ts`) are returned to AI agents by the `get_inputs` tool.
 
 ## Storage
 

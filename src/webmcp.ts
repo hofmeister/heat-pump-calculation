@@ -12,6 +12,7 @@ import { DEFAULT_SPECS } from './defaults';
 import type { Results } from './main';
 import type { MonthlyAreas, Specs, YearSummary } from './model';
 import { CONSUMPTION_BANDS } from './prices';
+import { HELP } from './specHelp';
 import * as store from './storage';
 
 export interface AppApi {
@@ -214,6 +215,8 @@ function inputsOut(api: AppApi) {
     bands: CONSUMPTION_BANDS,
     specs: Object.fromEntries(Object.entries(s.specs).filter(([k]) => k !== 'solarAreas')),
     specDescriptions: SPEC_DOCS,
+    /** What each input means and where a user can find the number (datasheet, energy report, bill…). */
+    help: HELP,
     solarAreasByMonth: s.specs.solarAreas.map((a, i) => ({ month: i + 1, ...Object.fromEntries(Object.entries(a).map(([k, v]) => [k, r2(v as number)])) })),
     priceOverrides: s.priceOverrides,
     tariffsUsed: api.tariffs(),
@@ -252,7 +255,7 @@ function tools(api: AppApi): ToolDef[] {
     {
       name: 'get_inputs',
       title: 'Get calculator inputs',
-      description: 'Returns the current location, period, electricity price settings and all building/heat-pump specs (with units and meaning), plus the tariff used per half-year.',
+      description: 'Returns the current location, period, electricity price settings and all building/heat-pump specs (with units and meaning), the tariff used per half-year, and help texts explaining where to find each number (datasheet, energy report, bill). Use the help to guide the user in gathering their figures.',
       inputSchema: { type: 'object', properties: {} },
       annotations: { readOnlyHint: true },
       execute: () => inputsOut(api),
@@ -459,7 +462,7 @@ function tools(api: AppApi): ToolDef[] {
     {
       name: 'reset_inputs',
       title: 'Reset inputs to defaults',
-      description: 'Resets all inputs to the built-in example (Villa Visione, Sasso Marconi). Saved scenarios are kept.',
+      description: 'Resets all inputs to the built-in example house (Berlin). Saved scenarios are kept.',
       inputSchema: { type: 'object', properties: {} },
       annotations: { consequentialHint: true },
       execute: () => {
