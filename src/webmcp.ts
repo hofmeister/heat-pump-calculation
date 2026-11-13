@@ -459,7 +459,7 @@ function tools(api: AppApi): ToolDef[] {
     {
       name: 'reset_inputs',
       title: 'Reset inputs to defaults',
-      description: 'Resets all inputs to the built-in example (Villa Visione, Sasso Marconi). Saved scenarios are kept.',
+      description: 'Resets all inputs to the built-in example house (Berlin). Saved scenarios are kept.',
       inputSchema: { type: 'object', properties: {} },
       annotations: { consequentialHint: true },
       execute: () => {

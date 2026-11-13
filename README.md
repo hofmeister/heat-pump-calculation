@@ -1,6 +1,6 @@
 # Heat Pump Calculator
 
-A small browser app (TypeScript + Vite, no backend) that estimates how much electricity and money heat pumps use for heating and cooling a building. It also checks whether the pumps have enough capacity. It is based on the Villa Visione heating & cooling analysis spreadsheet (translated from Italian): the defaults reproduce that spreadsheet, and the unit tests check the result to 6 decimals.
+A small browser app (TypeScript + Vite, no backend) that estimates how much electricity and money heat pumps use for heating and cooling a building. It also checks whether the pumps have enough capacity. It is a port of a heating & cooling analysis spreadsheet. The unit tests check the model against that spreadsheet's formulas, evaluated by LibreOffice on a synthetic example house, to 6 decimals. The defaults are a generic example house in Berlin; replace them with your own building's figures.
 
 ## Data sources (pulled automatically)
 

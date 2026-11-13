@@ -272,7 +272,7 @@ function bindInputs() {
     if (t.id === 'export') return exportJson();
     if (t.id === 'import-btn') return $<HTMLInputElement>('#import').click();
     if (t.id === 'reset') {
-      if (confirm('Reset all specs to the defaults (Villa Visione example)? Saved scenarios are kept.')) applyState(store.defaultState(), 'Defaults restored.');
+      if (confirm('Reset all specs to the example house? Saved scenarios are kept.')) applyState(store.defaultState(), 'Defaults restored.');
       return;
     }
     if (t.id === 'clear') {

@@ -1,6 +1,6 @@
 /**
  * Day/night heating & cooling model, ported 1:1 from the
- * Villa Visione heating & cooling analysis spreadsheet.
+ * heating & cooling analysis spreadsheet.
  *
  * Every day is split into a daylight period (sunrise → sunset) and a night
  * period (the rest of the calendar day). Demand, delivered energy, electricity

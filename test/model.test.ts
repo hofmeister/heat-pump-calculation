@@ -1,15 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import fixture from './fixtures/villa-visione.json';
+import fixture from './fixtures/example-house.json';
 import { DEFAULT_SPECS } from '../src/defaults';
 import { capacityCheck, computeDay, summarizeByYear, totals, type DayInput } from '../src/model';
 import { semesterOf } from '../src/prices';
 
-// Tariffs used in the spreadsheet (Eurostat nrg_pc204 IT ≥15 000 kWh, then Hera 0.399).
-const SHEET_TARIFFS: Record<string, number> = {
-  '2021-S1': 0.1958, '2021-S2': 0.2147, '2022-S1': 0.2901, '2022-S2': 0.355,
-  '2023-S1': 0.3441, '2023-S2': 0.2483, '2024-S1': 0.2787, '2024-S2': 0.2675,
-  '2025-S1': 0.2979, '2025-S2': 0.2808, '2026-S1': 0.399, '2026-S2': 0.399,
-};
+// Fixture: the original spreadsheet's formulas, recalculated by LibreOffice for the default example house on synthetic weather.
+const SHEET_TARIFFS = fixture.tariffs as Record<string, number>;
 const tariff = (date: string) => SHEET_TARIFFS[semesterOf(date)];
 
 const days: DayInput[] = (fixture.days as (string | number)[][]).map((r) => {
@@ -35,13 +31,14 @@ describe('model reproduces the spreadsheet', () => {
   });
 
   it('capacity check matches', () => {
-    const c = capacityCheck(DEFAULT_SPECS, rows, 38.4);
+    const c = capacityCheck(DEFAULT_SPECS, rows, null);
     const exp = fixture.capacity as number[];
     expect(c.designHeatLoadKw).toBeCloseTo(exp[0], 9);
     expect(c.pumpsAtDesignKw).toBeCloseTo(exp[1], 9);
     expect(c.maxCoolDemandKw).toBeCloseTo(exp[2], 9);
-    expect(c.heatUnmetKwh).toBe(0);
-    expect(c.coolUnmetKwh).toBe(0);
+    expect(c.heatUnmetKwh).toBeCloseTo(exp[3], 6);
+    expect(c.coolUnmetKwh).toBeCloseTo(exp[4], 6);
+    expect(c.heatUnmetKwh).toBeGreaterThan(0); // the example exercises the deficit paths
   });
 
   it('sample daily rows match column by column', () => {
