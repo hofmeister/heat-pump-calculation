@@ -372,8 +372,8 @@ async function refreshPrices() {
 async function run() {
   if (busy) return;
   busy = true;
-  const btn = $<HTMLButtonElement>('#run');
-  btn.disabled = true;
+  const btns = [$<HTMLButtonElement>('#run'), $<HTMLButtonElement>('#run-mobile')];
+  btns.forEach((b) => (b.disabled = true));
   try {
     const { latitude, longitude } = state.location;
     const end = endDate();
@@ -386,12 +386,13 @@ async function run() {
     const ok = store.saveWeather(w);
     renderInputsKeepFocus();
     recompute();
+    setView('results');
     setStatus(`Weather ${w.start} → ${w.end} (${w.timezone}) fetched ${new Date(w.fetchedAt).toLocaleString()}.${ok ? '' : ' (Too large to cache locally — it will be downloaded again next time.)'}`);
   } catch (err) {
     setStatus((err as Error).message, true);
   } finally {
     busy = false;
-    btn.disabled = false;
+    btns.forEach((b) => (b.disabled = false));
   }
 }
 
@@ -474,12 +475,12 @@ function renderResults(host: HTMLElement, years: YearSummary[], tot: YearSummary
 
     <section class="card"><h2>Capacity check</h2><div class="scroll-x"><table>
       <thead><tr><th>Item</th><th>Value</th><th style="text-align:left">Meaning</th></tr></thead><tbody>
-      <tr><td>Heating demand at ${state.specs.designOutdoorTemp} °C</td><td>${n2(cap.designHeatLoadKw)} kW</td><td style="text-align:left;white-space:normal">Steady-state loss, excluding reheat boost.</td></tr>
-      <tr><td>${state.specs.pumpCount} pumps at ${state.specs.designOutdoorTemp} °C</td><td class="${heatOk ? '' : 'bad'}">${n2(cap.pumpsAtDesignKw)} kW</td><td style="text-align:left;white-space:normal">Interpolated capacity × capacity factor.</td></tr>
-      <tr><td>Max cooling demand (period mean)</td><td>${n2(cap.maxCoolDemandKw)} kW</td><td style="text-align:left;white-space:normal">Incl. solar, ventilation and dehumidification.</td></tr>
-      <tr><td>Heat not delivered</td><td class="${cap.heatUnmetKwh > 0 ? 'bad' : ''}">${n0(cap.heatUnmetKwh)} kWh</td><td style="text-align:left;white-space:normal">Shortfall vs. demand at the indoor setpoint.</td></tr>
-      <tr><td>Cooling not delivered</td><td class="${cap.coolUnmetKwh > 0 ? 'bad' : ''}">${n0(cap.coolUnmetKwh)} kWh</td><td style="text-align:left;white-space:normal">Shortfall during cooling periods.</td></tr>
-      <tr><td>Highest hourly temperature</td><td>${cap.maxHourlyTemp !== null ? n1(cap.maxHourlyTemp) : '–'} °C</td><td style="text-align:left;white-space:normal">From the weather model, not a station.</td></tr>
+      <tr><td>Heating demand at ${state.specs.designOutdoorTemp} °C</td><td>${n2(cap.designHeatLoadKw)} kW</td><td class="wrap">Steady-state loss, excluding reheat boost.</td></tr>
+      <tr><td>${state.specs.pumpCount} pumps at ${state.specs.designOutdoorTemp} °C</td><td class="${heatOk ? '' : 'bad'}">${n2(cap.pumpsAtDesignKw)} kW</td><td class="wrap">Interpolated capacity × capacity factor.</td></tr>
+      <tr><td>Max cooling demand (period mean)</td><td>${n2(cap.maxCoolDemandKw)} kW</td><td class="wrap">Incl. solar, ventilation and dehumidification.</td></tr>
+      <tr><td>Heat not delivered</td><td class="${cap.heatUnmetKwh > 0 ? 'bad' : ''}">${n0(cap.heatUnmetKwh)} kWh</td><td class="wrap">Shortfall vs. demand at the indoor setpoint.</td></tr>
+      <tr><td>Cooling not delivered</td><td class="${cap.coolUnmetKwh > 0 ? 'bad' : ''}">${n0(cap.coolUnmetKwh)} kWh</td><td class="wrap">Shortfall during cooling periods.</td></tr>
+      <tr><td>Highest hourly temperature</td><td>${cap.maxHourlyTemp !== null ? n1(cap.maxHourlyTemp) : '–'} °C</td><td class="wrap">From the weather model, not a station.</td></tr>
     </tbody></table></div></section>
 
     <section class="card"><h2>Days</h2>
@@ -557,6 +558,21 @@ loadPricesFromCache();
 renderInputs();
 bindInputs();
 $('#run').addEventListener('click', run);
+$('#run-mobile').addEventListener('click', run);
+
+// Mobile: one panel at a time, switched from the bottom bar.
+function setView(view: 'inputs' | 'results') {
+  if (document.body.dataset.view === view) return;
+  document.body.dataset.view = view;
+  document.querySelectorAll('.mobile-nav [data-view]').forEach((b) => b.setAttribute('aria-pressed', String((b as HTMLElement).dataset.view === view)));
+  if (window.matchMedia('(max-width: 900px)').matches) window.scrollTo({ top: 0 });
+}
+$('.mobile-nav').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLElement>('[data-view]');
+  if (b) setView(b.dataset.view as 'inputs' | 'results');
+});
+// First visit without results: start on the specs panel.
+if (!weatherCovers(weather)) setView('inputs');
 recompute();
 
 // Pull fresh data automatically when the cache is missing, stale or doesn't cover the range.

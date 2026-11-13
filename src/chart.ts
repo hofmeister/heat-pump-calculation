@@ -12,7 +12,26 @@ function niceMax(v: number): number {
   return 10 * p;
 }
 
+const observers = new WeakMap<HTMLElement, ResizeObserver>();
+
+/** Renders at the container's real pixel width and re-renders when it changes, so text stays legible on phones. */
 export function renderMonthlyChart(host: HTMLElement, rows: DayResult[]) {
+  observers.get(host)?.disconnect();
+  let lastW = 0;
+  const ro = new ResizeObserver(() => {
+    const w = Math.round(host.clientWidth);
+    if (w > 0 && Math.abs(w - lastW) > 4) {
+      lastW = w;
+      draw(host, rows, w);
+    }
+  });
+  ro.observe(host);
+  observers.set(host, ro);
+  lastW = Math.round(host.clientWidth) || 900;
+  draw(host, rows, lastW);
+}
+
+function draw(host: HTMLElement, rows: DayResult[], width: number) {
   const map = new Map<string, MonthBar>();
   for (const r of rows) {
     const key = r.date.slice(0, 7);
@@ -23,7 +42,8 @@ export function renderMonthlyChart(host: HTMLElement, rows: DayResult[]) {
     m.cost += r.cost;
   }
   const bars = [...map.values()];
-  const W = 900, H = 260, L = 52, R = 8, T = 10, B = 26;
+  const W = Math.max(280, width), H = W < 600 ? 220 : 260, L = W < 600 ? 40 : 52, R = 8, T = 10, B = 26;
+  const compact = W < 600;
   const max = niceMax(Math.max(...bars.map((b) => b.heat + b.cool), 0));
   const bw = (W - L - R) / Math.max(bars.length, 1);
   const y = (v: number) => T + (H - T - B) * (1 - v / max);
@@ -32,10 +52,11 @@ export function renderMonthlyChart(host: HTMLElement, rows: DayResult[]) {
   const r = Math.min(4, barW / 2);
 
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * max);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Monthly heat-pump electricity, heating and cooling stacked">`;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Monthly heat-pump electricity, heating and cooling stacked">`;
   for (const t of ticks) {
     svg += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)" />`;
-    svg += `<text x="${L - 6}" y="${y(t) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(t)}</text>`;
+    const label = compact && t >= 1000 ? `${+(t / 1000).toFixed(1)}k` : fmt(t);
+    svg += `<text x="${L - 6}" y="${y(t) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${label}</text>`;
   }
   bars.forEach((b, i) => {
     const x = L + i * bw + gap / 2;
@@ -51,8 +72,9 @@ export function renderMonthlyChart(host: HTMLElement, rows: DayResult[]) {
       svg += `<path d="${roundedTop(x, yt, barW, h, r)}" fill="var(--series-cool)" />`;
     }
     svg += `<rect data-i="${i}" x="${L + i * bw}" y="${T}" width="${bw}" height="${H - T - B}" fill="transparent" />`;
-    if (b.key.endsWith('-01') || bars.length <= 14) {
-      const label = bars.length <= 14 ? b.key.slice(5) + '/' + b.key.slice(2, 4) : b.key.slice(0, 4);
+    const few = bars.length <= (compact ? 7 : 14);
+    if (few || (b.key.endsWith('-01') && (!compact || bars.length < 48 || Number(b.key.slice(0, 4)) % 2 === 0))) {
+      const label = few ? b.key.slice(5) + '/' + b.key.slice(2, 4) : compact ? `'${b.key.slice(2, 4)}` : b.key.slice(0, 4);
       svg += `<text x="${x}" y="${H - 8}" font-size="11" fill="var(--muted)">${label}</text>`;
     }
   });
@@ -63,19 +85,21 @@ export function renderMonthlyChart(host: HTMLElement, rows: DayResult[]) {
     <div class="chart">${svg}<div class="tip" hidden></div></div>`;
   const chart = host.querySelector<HTMLElement>('.chart')!;
   const tip = host.querySelector<HTMLElement>('.tip')!;
-  chart.addEventListener('mousemove', (e) => {
-    const t = e.target as Element;
-    const i = t.getAttribute?.('data-i');
-    if (i === null || i === undefined) { tip.hidden = true; return; }
+  const show = (e: PointerEvent) => {
+    const t = document.elementFromPoint(e.clientX, e.clientY) as Element | null;
+    const i = t?.getAttribute?.('data-i');
+    if (i === null || i === undefined || !t || !chart.contains(t)) { tip.hidden = true; return; }
     const b = bars[Number(i)];
     tip.innerHTML = `<b>${b.key}</b><br>Heating ${fmt(b.heat)} kWh<br>Cooling ${fmt(b.cool)} kWh<br>Cost € ${fmt(b.cost)}`;
     tip.hidden = false;
     const rect = chart.getBoundingClientRect();
     const px = e.clientX - rect.left;
-    tip.style.left = `${Math.min(px + 12, rect.width - tip.offsetWidth - 4)}px`;
-    tip.style.top = `${e.clientY - rect.top + 12}px`;
-  });
-  chart.addEventListener('mouseleave', () => (tip.hidden = true));
+    tip.style.left = `${Math.max(0, Math.min(px + 12, rect.width - tip.offsetWidth - 4))}px`;
+    tip.style.top = `${Math.max(0, e.clientY - rect.top - tip.offsetHeight - 10)}px`;
+  };
+  chart.addEventListener('pointermove', show);
+  chart.addEventListener('pointerdown', show);
+  chart.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') tip.hidden = true; });
 }
 
 function roundedTop(x: number, y: number, w: number, h: number, r: number): string {

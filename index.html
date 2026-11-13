@@ -2,12 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#2a78d6" />
     <title>Heat Pump Calculator</title>
     <meta name="description" content="Estimate heat-pump heating and cooling electricity, cost and capacity deficits from real historical weather and electricity prices." />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%232a78d6'/></svg>" />
   </head>
-  <body>
+  <body data-view="results">
     <header class="top">
       <div>
         <h1>Heat Pump Calculator</h1>
@@ -23,6 +24,11 @@
       <aside id="inputs" class="inputs"></aside>
       <section id="results" class="results"></section>
     </main>
+    <nav class="mobile-nav" aria-label="Sections">
+      <button data-view="inputs" aria-pressed="false">Specs</button>
+      <button data-view="results" aria-pressed="true">Results</button>
+      <button id="run-mobile" class="primary">Calculate</button>
+    </nav>
     <footer class="foot">
       Data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) ·
       <a href="https://ec.europa.eu/eurostat/databrowser/view/nrg_pc204/default/table" target="_blank" rel="noopener">Eurostat nrg_pc204</a>.

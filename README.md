@@ -39,3 +39,11 @@ npm run dev      # local dev server
 npm test         # model + aggregation tests (incl. reproduction of the spreadsheet)
 npm run build    # static site in dist/ (relative paths, host anywhere)
 ```
+
+## Deployment (GitHub Pages)
+
+`.github/workflows/deploy.yml` tests, builds and deploys the app on every push to `master`. You can also run it by hand from the Actions tab. Before the first run, set **Settings → Pages → Build and deployment → Source** to **GitHub Actions**.
+
+## Mobile
+
+On screens up to 900 px wide the app shows one panel at a time (Specs or Results), switched from a bottom bar that also holds the Calculate button. Tables scroll sideways with the first column fixed. The chart redraws at the screen's width and shows values when you tap a bar.
