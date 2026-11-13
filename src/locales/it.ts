@@ -15,6 +15,7 @@ export const it: Locale = {
     navSpecs: 'Dati',
     navResults: 'Risultati',
     language: 'Lingua',
+    automatic: 'Automatica',
     footerData: 'Dati:',
     footerModel: 'Modello: bilancio stazionario giorno/notte; senza inerzia termica né distribuzione per stanza. Risultati solo indicativi.',
   },

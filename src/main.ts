@@ -1,7 +1,7 @@
 import './style.css';
 import { customLines, fullPrompt, resultsForAi, shortPrompt, SITE_URL } from './aiGuide';
 import { renderMonthlyChart } from './chart';
-import { dateTime, eur, fmt, getLang, L, LANGS, LOCALES, monthName, n0, n1, n2, n4, setLang, type Lang } from './i18n';
+import { applyLang, browserLang, chooseLang, dateTime, eur, fmt, getLang, isAutomatic, L, LANGS, LOCALES, monthName, n0, n1, n2, n4, type Lang } from './i18n';
 import { applyChanges, changedKeys, geocodePlace, InputError, parseAiInput } from './importer';
 import {
   capacityCheck, comfortShare, computeDay, designHeatLoadKw, summarizeByYear, totals,
@@ -144,7 +144,9 @@ function renderStatic() {
   $('#foot-data').textContent = t.app.footerData;
   $('#foot-model').textContent = t.app.footerModel;
   const sel = $<HTMLSelectElement>('#lang');
-  sel.innerHTML = LANGS.map((l) => `<option value="${l}" ${l === getLang() ? 'selected' : ''}>${LOCALES[l].meta.name}</option>`).join('');
+  const auto = isAutomatic();
+  sel.innerHTML = `<option value="auto" ${auto ? 'selected' : ''}>${esc(t.app.automatic)} (${LOCALES[browserLang()].meta.name})</option>`
+    + LANGS.map((l) => `<option value="${l}" ${!auto && l === getLang() ? 'selected' : ''}>${LOCALES[l].meta.name}</option>`).join('');
 }
 
 // ------------------------------------------------------------------ inputs rendering
@@ -836,7 +838,7 @@ function downloadCsv() {
 
 // ------------------------------------------------------------------ boot
 
-setLang(getLang());
+applyLang(getLang());
 renderStatic();
 loadPricesFromCache();
 renderInputs();
@@ -844,7 +846,7 @@ bindInputs();
 $('#run').addEventListener('click', () => void run());
 $('#run-mobile').addEventListener('click', () => void run());
 $<HTMLSelectElement>('#lang').addEventListener('change', (e) => {
-  setLang((e.target as HTMLSelectElement).value as Lang);
+  chooseLang((e.target as HTMLSelectElement).value as Lang | 'auto');
   renderStatic();
   renderInputsKeepFocus();
   recompute();

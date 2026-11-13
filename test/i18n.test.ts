@@ -31,3 +31,25 @@ describe.each(Object.keys(LOCALES).filter((l) => l !== 'en'))('locale %s', (lang
     expect(same.length, same.join(', ')).toBeLessThan(5);
   });
 });
+
+import { pickLang } from '../src/i18n';
+
+describe('pickLang', () => {
+  it('follows the browser, matching regional variants', () => {
+    expect(pickLang(null, ['it-IT', 'en-US'])).toBe('it');
+    expect(pickLang(null, ['es-MX'])).toBe('es');
+    expect(pickLang(null, ['fr_CA'])).toBe('fr');
+  });
+  it('uses the first supported browser language', () => {
+    expect(pickLang(null, ['da-DK', 'en-GB', 'it'])).toBe('en');
+    expect(pickLang(null, ['de-DE', 'fr-FR'])).toBe('fr');
+  });
+  it('falls back to English', () => {
+    expect(pickLang(null, ['da-DK', 'de'])).toBe('en');
+    expect(pickLang(null, [])).toBe('en');
+    expect(pickLang('xx', ['zz'])).toBe('en');
+  });
+  it('an explicit saved choice wins over the browser', () => {
+    expect(pickLang('es', ['it-IT'])).toBe('es');
+  });
+});

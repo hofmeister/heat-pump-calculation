@@ -15,6 +15,7 @@ export const fr: Locale = {
     navSpecs: 'Données',
     navResults: 'Résultats',
     language: 'Langue',
+    automatic: 'Automatique',
     footerData: 'Données :',
     footerModel: 'Modèle : bilan jour/nuit en régime permanent ; sans inertie thermique ni répartition par pièce. À titre indicatif.',
   },

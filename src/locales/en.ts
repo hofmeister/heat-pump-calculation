@@ -16,6 +16,7 @@ export const en = {
     navSpecs: 'Specs',
     navResults: 'Results',
     language: 'Language',
+    automatic: 'Automatic',
     footerData: 'Data:',
     footerModel: 'Model: steady-state day/night balance; no thermal mass, no per-room distribution. Indicative only.',
   },

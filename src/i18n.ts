@@ -8,30 +8,59 @@ export const LOCALES = { en, it, fr, es } satisfies Record<string, Locale>;
 export type Lang = keyof typeof LOCALES;
 export const LANGS = Object.keys(LOCALES) as Lang[];
 
-const KEY = 'hpc.lang.v1';
-let lang: Lang = detect();
+// v1 also stored auto-detected languages; v2 stores only an explicit choice.
+const KEY = 'hpc.lang.v2';
 
-function detect(): Lang {
-  try {
-    const saved = localStorage.getItem(KEY);
-    if (saved && saved in LOCALES) return saved as Lang;
-  } catch { /* storage blocked */ }
-  for (const l of typeof navigator !== 'undefined' ? navigator.languages ?? [navigator.language] : []) {
-    const short = l.slice(0, 2).toLowerCase();
-    if (short in LOCALES) return short as Lang;
+const isLang = (l: unknown): l is Lang => typeof l === 'string' && Object.prototype.hasOwnProperty.call(LOCALES, l);
+
+/**
+ * Pick the UI language: an explicit choice the user saved wins; otherwise the
+ * first of the browser's preferred languages we support (so "da, en, it" gives
+ * English); otherwise English.
+ */
+export function pickLang(saved: string | null | undefined, browserLangs: readonly string[]): Lang {
+  if (isLang(saved)) return saved;
+  for (const tag of browserLangs) {
+    const primary = String(tag).split(/[-_]/)[0].toLowerCase();
+    if (isLang(primary)) return primary;
   }
   return 'en';
 }
 
-export const getLang = () => lang;
-export function setLang(l: Lang) {
-  lang = l;
-  try { localStorage.setItem(KEY, l); } catch { /* ignore */ }
-  document.documentElement.lang = LOCALES[l].meta.htmlLang;
+function savedLang(): string | null {
+  try { return localStorage.getItem(KEY); } catch { return null; }
+}
+function browserLangs(): readonly string[] {
+  if (typeof navigator === 'undefined') return [];
+  return navigator.languages?.length ? navigator.languages : navigator.language ? [navigator.language] : [];
 }
 
-/** Current locale's strings. */
-export const L = (): Locale => LOCALES[lang];
+/** The language the browser alone would give (shown next to "Automatic"). */
+export const browserLang = (): Lang => pickLang(null, browserLangs());
+/** True when the user hasn't picked a language, so it follows the browser. */
+export const isAutomatic = () => !isLang(savedLang());
+
+let lang: Lang = pickLang(savedLang(), browserLangs());
+
+export const getLang = () => lang;
+
+/** Apply a language for this page view without remembering it. */
+export function applyLang(l: Lang) {
+  lang = isLang(l) ? l : 'en';
+  if (typeof document !== 'undefined') document.documentElement.lang = LOCALES[lang].meta.htmlLang;
+}
+
+/** The user picked a language (or 'auto' to follow the browser again). */
+export function chooseLang(choice: Lang | 'auto') {
+  try {
+    if (choice === 'auto') localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY, choice);
+  } catch { /* storage blocked: still switch for this visit */ }
+  applyLang(choice === 'auto' ? browserLang() : choice);
+}
+
+/** Current locale's strings (English if anything is off). */
+export const L = (): Locale => LOCALES[lang] ?? LOCALES.en;
 
 /** Fill {placeholders}. */
 export function fmt(template: string, vars: Record<string, string | number> = {}): string {

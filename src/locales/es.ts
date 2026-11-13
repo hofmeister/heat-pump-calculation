@@ -15,6 +15,7 @@ export const es: Locale = {
     navSpecs: 'Datos',
     navResults: 'Resultados',
     language: 'Idioma',
+    automatic: 'Automático',
     footerData: 'Datos:',
     footerModel: 'Modelo: balance estacionario día/noche; sin inercia térmica ni reparto por estancias. Solo orientativo.',
   },
