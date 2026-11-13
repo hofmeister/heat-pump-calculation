@@ -2,11 +2,12 @@ import './style.css';
 import { renderMonthlyChart } from './chart';
 import {
   capacityCheck, comfortShare, computeDay, designHeatLoadKw, summarizeByYear, totals,
-  type DayResult, type MonthlyAreas, type Specs, type YearSummary,
+  type CapacityCheck, type DayResult, type MonthlyAreas, type Specs, type YearSummary,
 } from './model';
-import { buildTariffLookup, CONSUMPTION_BANDS, fetchEurostatPrices, semestersBetween, type BandCode } from './prices';
+import { buildTariffLookup, CONSUMPTION_BANDS, fetchEurostatPrices, semestersBetween, tariffSource, type BandCode } from './prices';
 import * as store from './storage';
 import { addDays, aggregate, fetchWeather, todayLocal, type WeatherData } from './weather';
+import { registerWebMcpTools } from './webmcp';
 
 // ------------------------------------------------------------------ state
 
@@ -152,7 +153,7 @@ function renderInputs() {
     <details class="card" open><summary>Electricity prices</summary>
       <div class="field"><label for="band">Eurostat consumption band</label><select id="band">
         ${CONSUMPTION_BANDS.map((b) => `<option value="${b.code}" ${b.code === s.band ? 'selected' : ''}>${b.label}</option>`).join('')}</select></div>
-      ${fieldHtml({ key: 'fallbackTariff', label: 'My current tariff (used where no price)', unit: '€/kWh', step: 0.001 })}
+      ${fieldHtml({ key: 'fallbackTariff', label: 'My current tariff (blank = latest Eurostat price)', unit: '€/kWh', step: 0.001, help: 'Used for half-years without an override or Eurostat price, e.g. the current one.' })}
       <p class="help">${eurostatInfo || 'Household prices incl. all taxes, fetched from Eurostat for the selected country on calculate.'} Type in a value to override a semester (e.g. from your own bill).</p>
       <div class="scroll-x"><table><thead><tr><th>Semester</th><th>Eurostat €/kWh</th><th>Override</th><th>Used</th></tr></thead><tbody>
       ${sems.map((sem) => `<tr><td>${sem}</td><td>${eurostat[sem] !== undefined ? eurostat[sem].toFixed(4) : '–'}</td>
@@ -186,7 +187,7 @@ function bindInputs() {
     if (t.dataset.key) {
       const key = t.dataset.key as NumKey;
       const v = t.value === '' ? null : Number(t.value);
-      if (key === 'designHeatLoadOverrideKw') state.specs.designHeatLoadOverrideKw = v;
+      if (key === 'designHeatLoadOverrideKw' || key === 'fallbackTariff') state.specs[key] = v !== null && v > 0 ? v : null;
       else if (v !== null && Number.isFinite(v)) (state.specs[key] as number | null) = v;
       if (key === 'designTransmissionLossW' || key === 'designVentilationLossW' || key === 'designHeatLoadOverrideKw') {
         const note = document.getElementById('heatload-note');
@@ -209,7 +210,13 @@ function bindInputs() {
     switch (t.id) {
       case 'lat': state.location.latitude = Number(t.value); state.location.name = 'Custom coordinates'; break;
       case 'lon': state.location.longitude = Number(t.value); state.location.name = 'Custom coordinates'; break;
-      case 'cc': state.location.countryCode = t.value.toUpperCase(); eurostat = {}; eurostatInfo = ''; break;
+      case 'cc': {
+        const r = store.withLocation(state, { ...state.location, countryCode: t.value.toUpperCase() });
+        state = r.state; eurostat = {}; eurostatInfo = '';
+        loadPricesFromCache(); renderInputsKeepFocus();
+        if (r.clearedOverrides) setStatus('Country changed — per-semester price overrides were cleared.');
+        break;
+      }
       case 'start': if (t.value) state.startDate = t.value; renderInputs(); break;
       case 'end': state.endDate = t.value || null; renderInputs(); break;
       case 'band': state.band = t.value as BandCode; eurostat = {}; eurostatInfo = ''; loadPricesFromCache(); renderInputs(); recompute(); break;
@@ -227,11 +234,14 @@ function bindInputs() {
     if (t.id === 'geo-go') return geocode();
     if (t.dataset.geo) {
       const r = JSON.parse(t.dataset.geo);
-      state.location = r;
+      const res = store.withLocation(state, r);
+      state = res.state;
       eurostat = {}; eurostatInfo = '';
+      loadPricesFromCache();
       persist();
       renderInputs();
-      setStatus(`Location set to ${r.name}. Press “Fetch data & calculate”.`);
+      recompute();
+      setStatus(`Location set to ${r.name}.${res.clearedOverrides ? ' Price overrides were cleared (different country).' : ''} Press “Calculate”.`);
       return;
     }
     if (t.id === 'areas-fill') {
@@ -369,8 +379,9 @@ async function refreshPrices() {
   }
 }
 
-async function run() {
-  if (busy) return;
+/** Fetch weather + prices and recalculate. Resolves with an error message, or null on success. */
+async function run(): Promise<string | null> {
+  if (busy) return 'A calculation is already running.';
   busy = true;
   const btns = [$<HTMLButtonElement>('#run'), $<HTMLButtonElement>('#run-mobile')];
   btns.forEach((b) => (b.disabled = true));
@@ -388,8 +399,10 @@ async function run() {
     recompute();
     setView('results');
     setStatus(`Weather ${w.start} → ${w.end} (${w.timezone}) fetched ${new Date(w.fetchedAt).toLocaleString()}.${ok ? '' : ' (Too large to cache locally — it will be downloaded again next time.)'}`);
+    return null;
   } catch (err) {
     setStatus((err as Error).message, true);
+    return (err as Error).message;
   } finally {
     busy = false;
     btns.forEach((b) => (b.disabled = false));
@@ -415,18 +428,31 @@ function recompute() {
     host.innerHTML = `<div class="card empty">Press <b>Fetch data &amp; calculate</b> to download hourly weather for ${esc(state.location.name)} and compute results.</div>`;
     return;
   }
-  const w = weather!;
-  const tariff = buildTariffLookup(eurostat, state.priceOverrides, state.specs.fallbackTariff);
-  const agg = aggregate(w, state.specs, state.startDate, endDate());
-  skipped = agg.skippedDays;
-  lastRows = agg.days.map((d) => computeDay(d, state.specs, tariff));
-  const years = summarizeByYear(lastRows);
-  const tot = totals(years);
-  const cap = capacityCheck(state.specs, lastRows, agg.maxHourlyTemp);
-  renderResults(host, years, tot, cap, w);
+  const r = computeResults(state)!;
+  skipped = r.skipped;
+  lastRows = r.rows;
+  renderResults(host, r.years, r.tot, r.cap, weather!);
 }
 
-function renderResults(host: HTMLElement, years: YearSummary[], tot: YearSummary, cap: ReturnType<typeof capacityCheck>, w: WeatherData) {
+export interface Results {
+  rows: DayResult[];
+  years: YearSummary[];
+  tot: YearSummary;
+  cap: CapacityCheck;
+  skipped: string[];
+}
+
+/** Pure calculation for a given state against the loaded weather; null when weather isn't loaded for it. */
+function computeResults(s: store.AppState): Results | null {
+  if (!weather || weather.latitude !== s.location.latitude || weather.longitude !== s.location.longitude || weather.start > s.startDate) return null;
+  const tariff = buildTariffLookup(eurostat, s.priceOverrides, s.specs.fallbackTariff);
+  const agg = aggregate(weather, s.specs, s.startDate, s.endDate ?? addDays(todayLocal(), -1));
+  const rows = agg.days.map((d) => computeDay(d, s.specs, tariff));
+  const years = summarizeByYear(rows);
+  return { rows, years, tot: totals(years), cap: capacityCheck(s.specs, rows, agg.maxHourlyTemp), skipped: agg.skippedDays };
+}
+
+function renderResults(host: HTMLElement, years: YearSummary[], tot: YearSummary, cap: CapacityCheck, w: WeatherData) {
   const full = years.filter((y) => y.days >= 365);
   const avgCost = full.length ? full.reduce((a, y) => a + y.totalCostInclComfort, 0) / full.length : null;
   const avgKwh = full.length ? full.reduce((a, y) => a + y.elecTotal, 0) / full.length : null;
@@ -571,6 +597,26 @@ $('.mobile-nav').addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest<HTMLElement>('[data-view]');
   if (b) setView(b.dataset.view as 'inputs' | 'results');
 });
+// WebMCP: let in-browser AI agents use the calculator (no-op where the browser has no WebMCP support).
+registerWebMcpTools({
+  getState: () => structuredClone(state),
+  applyState: (next, msg) => applyState(store.normalizeState(next), msg),
+  run,
+  compute: (s) => computeResults(s ?? state),
+  endDate,
+  needsFetch: () => !weatherCovers(weather) || weather!.end < endDate(),
+  weatherInfo: () => (weather ? { from: weather.start, to: weather.end, timezone: weather.timezone, fetchedAt: weather.fetchedAt } : null),
+  tariffs: () => {
+    const lookup = buildTariffLookup(eurostat, state.priceOverrides, state.specs.fallbackTariff);
+    return Object.fromEntries(semestersBetween(state.startDate, endDate()).map((sem) => {
+      const source = tariffSource(eurostat, state.priceOverrides, state.specs.fallbackTariff, sem);
+      return [sem, { eurPerKwh: lookup(`${sem.slice(0, 4)}-${sem.endsWith('1') ? '01' : '07'}-01`), source }];
+    }));
+  },
+  priceSourceInfo: () => eurostatInfo,
+  setStatus,
+});
+
 // First visit without results: start on the specs panel.
 if (!weatherCovers(weather)) setView('inputs');
 recompute();

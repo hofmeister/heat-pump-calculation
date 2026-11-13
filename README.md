@@ -10,7 +10,7 @@ A small browser app (TypeScript + Vite, no backend) that estimates how much elec
 | Household electricity price per semester (all taxes included, by consumption band) | [Eurostat `nrg_pc204`](https://ec.europa.eu/eurostat/databrowser/view/nrg_pc204/default/table) for the selected country |
 | Address search | Open-Meteo geocoding |
 
-The end date defaults to "yesterday", so the period keeps rolling forward. You can override the price for any semester, for example with the rate from your own bill. Semesters that have no Eurostat value use "my current tariff".
+The end date defaults to "yesterday", so the period keeps rolling forward. You can override the price for any semester, for example with the rate from your own bill. Semesters that have no Eurostat value use "my current tariff", or the latest Eurostat price if that field is left blank. Overrides are cleared when the country changes, because they belong to a bill from one country.
 
 ## Storage
 
@@ -39,6 +39,20 @@ npm run dev      # local dev server
 npm test         # model + aggregation tests (incl. reproduction of the spreadsheet)
 npm run build    # static site in dist/ (relative paths, host anywhere)
 ```
+
+## AI agent tools (WebMCP)
+
+The page registers [WebMCP](https://webmachinelearning.github.io/webmcp/) tools, so an AI agent running in your browser can use the calculator directly. There is no backend: the tools call the same in-page code, local storage and public APIs as the UI, and every change they make shows up on screen with a status message. The tools are registered on `document.modelContext` (the current spec), with a fallback to `navigator.modelContext` (earlier previews and polyfills). In a browser without WebMCP the code does nothing.
+
+| Tool | What it does |
+|---|---|
+| `get_inputs` | Current location, period, prices and all specs, with units and meanings (read-only) |
+| `update_inputs` | Change any inputs; recalculates immediately when the data is already loaded |
+| `search_location` | Find coordinates and country for a place name (read-only) |
+| `calculate` | Download weather and prices if needed and return the results |
+| `get_results` / `get_days` | Yearly summary and capacity check, or per-day rows filtered to very hot, frost or deficit days (read-only) |
+| `what_if` | Recalculate with hypothetical changes **without** touching your inputs, and return the difference (read-only) |
+| `list_scenarios` / `save_scenario` / `load_scenario` / `delete_scenario` / `reset_inputs` | Manage scenarios saved in the browser |
 
 ## Deployment (GitHub Pages)
 

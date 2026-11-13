@@ -53,7 +53,7 @@ export const DEFAULT_SPECS: Specs = {
   comfortAreaM2: 206.32,
   totalFloorAreaM2: 663.1,
 
-  fallbackTariff: 0.399,
+  fallbackTariff: null,
 };
 
 export interface Location {

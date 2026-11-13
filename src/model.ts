@@ -76,8 +76,8 @@ export interface Specs {
   comfortAreaM2: number;
   totalFloorAreaM2: number;
 
-  /** Fallback tariff used for periods without a price, €/kWh */
-  fallbackTariff: number;
+  /** Tariff for periods without an override or Eurostat price, €/kWh; null = latest Eurostat price */
+  fallbackTariff: number | null;
 }
 
 export interface MonthlyAreas {

@@ -74,6 +74,13 @@ export function normalizeState(s: Partial<AppState> | null): AppState {
   };
 }
 
+/** Change location; per-semester price overrides come from a bill in one country, so they're dropped when the country changes. */
+export function withLocation(s: AppState, loc: Location): { state: AppState; clearedOverrides: boolean } {
+  const countryChanged = loc.countryCode.toUpperCase() !== s.location.countryCode.toUpperCase();
+  const cleared = countryChanged && Object.values(s.priceOverrides).some((v) => v !== null);
+  return { state: { ...s, location: loc, priceOverrides: countryChanged ? {} : s.priceOverrides }, clearedOverrides: cleared };
+}
+
 export const loadCurrent = () => normalizeState(read<AppState>(K.current));
 export const saveCurrent = (s: AppState) => write(K.current, s);
 

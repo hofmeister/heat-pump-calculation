@@ -74,21 +74,40 @@ export async function fetchEurostatPrices(countryIso2: string, band: BandCode, s
   return { geo, band, updated: json.updated ?? '', prices };
 }
 
+/** Used only when there is no override, no Eurostat data and no user tariff at all. */
+export const LAST_RESORT_TARIFF = 0.3;
+
+/** Most recent Eurostat value (semester keys sort chronologically). */
+export function latestPrice(eurostat: Record<string, number>): { semester: string; value: number } | null {
+  const keys = Object.keys(eurostat).sort();
+  const k = keys[keys.length - 1];
+  return k ? { semester: k, value: eurostat[k] } : null;
+}
+
+export function tariffSource(eurostat: Record<string, number>, overrides: Record<string, number | null>, fallback: number | null, sem: string) {
+  const o = overrides[sem];
+  if (typeof o === 'number' && o > 0) return 'override';
+  if (eurostat[sem] !== undefined) return 'eurostat';
+  if (fallback && fallback > 0) return 'myTariff';
+  return latestPrice(eurostat) ? 'latestEurostat' : 'lastResortDefault';
+}
+
 /**
- * Resolve the tariff for each semester: user override → Eurostat → fallback.
+ * Resolve the tariff for each semester: user override → Eurostat → my tariff → latest Eurostat price.
  */
 export function buildTariffLookup(
   eurostat: Record<string, number>,
   overrides: Record<string, number | null>,
-  fallback: number,
+  fallback: number | null,
 ): (date: string) => number {
+  const fb = fallback && fallback > 0 ? fallback : latestPrice(eurostat)?.value ?? LAST_RESORT_TARIFF;
   const cache = new Map<string, number>();
   return (date: string) => {
     const sem = semesterOf(date);
     let v = cache.get(sem);
     if (v === undefined) {
       const o = overrides[sem];
-      v = typeof o === 'number' && o > 0 ? o : eurostat[sem] ?? fallback;
+      v = typeof o === 'number' && o > 0 ? o : eurostat[sem] ?? fb;
       cache.set(sem, v);
     }
     return v;
