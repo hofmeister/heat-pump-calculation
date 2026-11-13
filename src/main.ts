@@ -7,6 +7,7 @@ import {
 import { buildTariffLookup, CONSUMPTION_BANDS, fetchEurostatPrices, semestersBetween, tariffSource, type BandCode } from './prices';
 import * as store from './storage';
 import { addDays, aggregate, fetchWeather, todayLocal, type WeatherData } from './weather';
+import { HELP } from './specHelp';
 import { registerWebMcpTools } from './webmcp';
 
 // ------------------------------------------------------------------ state
@@ -44,7 +45,7 @@ function persist() {
 // ------------------------------------------------------------------ field definitions
 
 type NumKey = { [K in keyof Specs]: Specs[K] extends number | null ? K : never }[keyof Specs];
-interface FieldDef { key: NumKey; label: string; unit?: string; step?: number; help?: string; pct?: boolean }
+interface FieldDef { key: NumKey; label: string; unit?: string; step?: number }
 
 const SECTIONS: { title: string; open?: boolean; fields: FieldDef[]; extra?: () => string }[] = [
   {
@@ -68,7 +69,7 @@ const SECTIONS: { title: string; open?: boolean; fields: FieldDef[]; extra?: () 
       { key: 'heatCapPlus7', label: 'Heating capacity per pump at +7 °C', unit: 'kW', step: 0.1 },
       { key: 'copMinus7', label: 'COP at −7 °C', step: 0.01 },
       { key: 'copPlus7', label: 'COP at +7 °C', step: 0.01 },
-      { key: 'heatCapFactor', label: 'Delivered heating capacity factor', step: 0.05, help: '0.9 simulates 10 % less capacity (e.g. defrost).' },
+      { key: 'heatCapFactor', label: 'Delivered heating capacity factor', step: 0.05 },
       { key: 'coolCapA35', label: 'Cooling capacity per pump at A35/W7', unit: 'kW', step: 0.1 },
       { key: 'eerA35', label: 'EER at A35/W7', step: 0.01 },
       { key: 'coolCapLossPerK', label: 'Cooling capacity loss per °C above 35', step: 0.005 },
@@ -80,7 +81,7 @@ const SECTIONS: { title: string; open?: boolean; fields: FieldDef[]; extra?: () 
   {
     title: 'Cooling loads',
     fields: [
-      { key: 'coolingThreshold', label: 'Cooling on above / indoor setpoint', unit: '°C', step: 0.5, help: 'Heating and cooling are both off between the heating setpoint and this temperature (outdoor period mean).' },
+      { key: 'coolingThreshold', label: 'Cooling on above / indoor setpoint', unit: '°C', step: 0.5 },
       { key: 'hotDayThreshold', label: '“Very hot” day: an hour ≥', unit: '°C', step: 0.5 },
       { key: 'coolTransmissionKwK', label: 'Transmission coefficient', unit: 'kW/K', step: 0.001 },
       { key: 'coolVentilationKwK', label: 'Ventilation coefficient', unit: 'kW/K', step: 0.001 },
@@ -99,25 +100,50 @@ const SECTIONS: { title: string; open?: boolean; fields: FieldDef[]; extra?: () 
       { key: 'comfortAreaM2', label: 'Area cooled to the night target', unit: 'm²', step: 0.1 },
       { key: 'totalFloorAreaM2', label: 'Total heated floor area', unit: 'm²', step: 0.1 },
     ],
-    extra: () => `<label class="row"><input type="checkbox" id="comfortEnabled" ${state.specs.comfortEnabled ? 'checked' : ''} style="flex:0 0 auto"> <span>Include night comfort cooling (bedrooms etc.)</span></label>
+    extra: () => `<div class="lbl check"><label class="row"><input type="checkbox" id="comfortEnabled" ${state.specs.comfortEnabled ? 'checked' : ''} style="flex:0 0 auto"> <span>Include night comfort cooling (bedrooms etc.)</span></label>${infoBtn('comfortEnabled', 'comfortEnabled', 'night comfort cooling')}</div>${infoPanel('comfortEnabled', 'comfortEnabled')}
       <p class="help">Share of cooling load: ${n1(comfortShare(state.specs) * 100)} %. Extra cost counts only the part not already cooled at the normal setpoint.</p>`,
   },
 ];
 
-const AREA_COLS: { key: keyof MonthlyAreas; label: string }[] = [
-  { key: 'winN', label: 'Win N' }, { key: 'winE', label: 'Win E' }, { key: 'winS', label: 'Win S' }, { key: 'winW', label: 'Win W' },
-  { key: 'opqN', label: 'Opq N' }, { key: 'opqE', label: 'Opq E' }, { key: 'opqS', label: 'Opq S' }, { key: 'opqW', label: 'Opq W' },
-  { key: 'opqH', label: 'Roof' }, { key: 'irLossKw', label: 'IR loss kW' },
+const AREA_COLS: { key: keyof MonthlyAreas; label: string; help: string }[] = [
+  { key: 'winN', label: 'Win N', help: 'winArea' }, { key: 'winE', label: 'Win E', help: 'winArea' },
+  { key: 'winS', label: 'Win S', help: 'winArea' }, { key: 'winW', label: 'Win W', help: 'winArea' },
+  { key: 'opqN', label: 'Opq N', help: 'opqArea' }, { key: 'opqE', label: 'Opq E', help: 'opqArea' },
+  { key: 'opqS', label: 'Opq S', help: 'opqArea' }, { key: 'opqW', label: 'Opq W', help: 'opqArea' },
+  { key: 'opqH', label: 'Roof', help: 'roofArea' }, { key: 'irLossKw', label: 'IR loss kW', help: 'irLoss' },
 ];
+const AREA_HELP_LABELS: Record<string, string> = { winArea: 'Windows (Win N/E/S/W)', opqArea: 'Walls (Opq N/E/S/W)', roofArea: 'Roof', irLoss: 'IR loss' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 // ------------------------------------------------------------------ inputs rendering
 
+/** Info panels the user has opened; kept across re-renders. */
+const openInfo = new Set<string>();
+
+/** ⓘ button toggling the help panel `info-<id>` for help entry `key`. */
+function infoBtn(key: string, id: string, label: string): string {
+  if (!HELP[key]) return '';
+  const open = openInfo.has(id);
+  return `<button type="button" class="info" data-info="${id}" aria-expanded="${open}" aria-controls="info-${id}" aria-label="What is ${esc(label)}?" title="What is this?">i</button>`;
+}
+
+function infoPanel(key: string, id: string, heading?: string): string {
+  const h = HELP[key];
+  if (!h) return '';
+  return `<div class="info-panel" id="info-${id}" role="note" ${openInfo.has(id) ? '' : 'hidden'}>
+    ${heading ? `<p class="info-head">${esc(heading)}</p>` : ''}
+    <p><b>What it is:</b> ${esc(h.what)}</p><p><b>Where to find it:</b> ${esc(h.find)}</p></div>`;
+}
+
+/** A labelled input row with its ⓘ button and help panel. */
+function row(id: string, helpKey: string, labelHtml: string, plainLabel: string, inputHtml: string): string {
+  return `<div class="field"><div class="lbl"><label for="${id}">${labelHtml}</label>${infoBtn(helpKey, id, plainLabel)}</div>${inputHtml}</div>${infoPanel(helpKey, id)}`;
+}
+
 function fieldHtml(f: FieldDef): string {
   const v = state.specs[f.key];
-  return `<div class="field"><label for="f-${f.key}">${f.label}${f.unit ? ` <span class="unit">${f.unit}</span>` : ''}</label>
-    <input id="f-${f.key}" data-key="${f.key}" type="number" step="${f.step ?? 'any'}" value="${v ?? ''}"></div>
-    ${f.help ? `<p class="help">${f.help}</p>` : ''}`;
+  return row(`f-${f.key}`, f.key, `${f.label}${f.unit ? ` <span class="unit">${f.unit}</span>` : ''}`, f.label,
+    `<input id="f-${f.key}" data-key="${f.key}" type="number" step="${f.step ?? 'any'}" value="${v ?? ''}">`);
 }
 
 function renderInputs() {
@@ -128,14 +154,14 @@ function renderInputs() {
 
   $('#inputs').innerHTML = `
     <section class="card">
-      <h2>Location &amp; period</h2>
+      <div class="lbl"><h2>Location &amp; period</h2>${infoBtn('location', 'location', 'location')}</div>${infoPanel('location', 'location')}
       <div class="row"><input id="geo-q" placeholder="Search town or address…" value=""><button id="geo-go">Search</button></div>
       <div class="geo-results" id="geo-results"></div>
       <p class="help">Selected: <b>${esc(s.location.name)}</b> (${s.location.latitude.toFixed(3)}, ${s.location.longitude.toFixed(3)}, ${esc(s.location.countryCode)})</p>
       <div class="field"><label for="lat">Latitude</label><input id="lat" type="number" step="0.001" value="${s.location.latitude}"></div>
       <div class="field"><label for="lon">Longitude</label><input id="lon" type="number" step="0.001" value="${s.location.longitude}"></div>
-      <div class="field"><label for="cc">Country code (prices)</label><input id="cc" maxlength="2" value="${esc(s.location.countryCode)}"></div>
-      <div class="field"><label for="start">From</label><input id="start" type="date" min="1940-01-01" value="${s.startDate}"></div>
+      ${row('cc', 'countryCode', 'Country code (prices)', 'the country code', `<input id="cc" maxlength="2" value="${esc(s.location.countryCode)}">`)}
+      ${row('start', 'period', 'From', 'the period', `<input id="start" type="date" min="1940-01-01" value="${s.startDate}">`)}
       <div class="field"><label for="end">To (blank = yesterday)</label><input id="end" type="date" value="${s.endDate ?? ''}"></div>
     </section>
 
@@ -143,23 +169,25 @@ function renderInputs() {
       ${sec.fields.map(fieldHtml).join('')}${sec.extra ? sec.extra() : ''}</details>`).join('')}
 
     <details class="card"><summary>Effective solar areas by month</summary>
-      <p class="help">Effective solar aperture (m²) per orientation — glass area × g-value × shading, and for opaque parts U × α × Rse × area. “IR loss” is long-wave radiation to the sky (kW). Irradiance on vertical N/E/S/W and horizontal surfaces comes from Open-Meteo.</p>
-      <div class="scroll-x"><table class="areas"><thead><tr><th></th>${AREA_COLS.map((c) => `<th>${c.label}</th>`).join('')}</tr></thead><tbody>
+      <p class="help">How much sun each side of the house catches, in m² (tap ⓘ for how to work it out). Sunshine on each façade and the roof comes from Open-Meteo.</p>
+      <div class="scroll-x"><table class="areas"><thead><tr><th></th>${AREA_COLS.map((c) => `<th><span class="th-info">${c.label}${infoBtn(c.help, `area-${c.help}`, AREA_HELP_LABELS[c.help])}</span></th>`).join('')}</tr></thead><tbody>
       ${s.specs.solarAreas.map((a, i) => `<tr><td>${MONTHS[i]}</td>${AREA_COLS.map((c) => `<td><input type="number" step="any" data-area="${i}" data-col="${c.key}" value="${+a[c.key].toFixed(4)}"></td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
+      ${Object.keys(AREA_HELP_LABELS).map((k) => infoPanel(k, `area-${k}`, AREA_HELP_LABELS[k])).join('')}
       <div class="row" style="margin-top:6px"><button class="small" id="areas-fill">Copy July to all months</button></div>
     </details>
 
     <details class="card" open><summary>Electricity prices</summary>
-      <div class="field"><label for="band">Eurostat consumption band</label><select id="band">
-        ${CONSUMPTION_BANDS.map((b) => `<option value="${b.code}" ${b.code === s.band ? 'selected' : ''}>${b.label}</option>`).join('')}</select></div>
-      ${fieldHtml({ key: 'fallbackTariff', label: 'My current tariff (blank = latest Eurostat price)', unit: '€/kWh', step: 0.001, help: 'Used for half-years without an override or Eurostat price, e.g. the current one.' })}
+      ${row('band', 'band', 'Eurostat consumption band', 'the consumption band', `<select id="band">
+        ${CONSUMPTION_BANDS.map((b) => `<option value="${b.code}" ${b.code === s.band ? 'selected' : ''}>${b.label}</option>`).join('')}</select>`)}
+      ${fieldHtml({ key: 'fallbackTariff', label: 'My current tariff (blank = latest Eurostat price)', unit: '€/kWh', step: 0.001 })}
       <p class="help">${eurostatInfo || 'Household prices incl. all taxes, fetched from Eurostat for the selected country on calculate.'} Type in a value to override a semester (e.g. from your own bill).</p>
-      <div class="scroll-x"><table><thead><tr><th>Semester</th><th>Eurostat €/kWh</th><th>Override</th><th>Used</th></tr></thead><tbody>
+      <div class="scroll-x"><table><thead><tr><th>Half-year</th><th>Eurostat €/kWh</th><th><span class="th-info">Override${infoBtn('priceOverrides', 'priceOverrides', 'a price override')}</span></th><th>Used</th></tr></thead><tbody>
       ${sems.map((sem) => `<tr><td>${sem}</td><td>${eurostat[sem] !== undefined ? eurostat[sem].toFixed(4) : '–'}</td>
         <td><input type="number" step="0.001" data-sem="${sem}" value="${s.priceOverrides[sem] ?? ''}" style="width:80px"></td>
         <td>${tariff(`${sem.slice(0, 4)}-${sem.endsWith('1') ? '01' : '07'}-01`).toFixed(4)}</td></tr>`).join('')}
       </tbody></table></div>
+      ${infoPanel('priceOverrides', 'priceOverrides')}
     </details>
 
     <section class="card">
@@ -231,6 +259,15 @@ function bindInputs() {
   root.addEventListener('click', async (e) => {
     const t = (e.target as HTMLElement).closest('button');
     if (!t) return;
+    if (t.dataset.info) {
+      const id = t.dataset.info;
+      const panel = document.getElementById(`info-${id}`);
+      const open = !!panel?.hidden;
+      if (panel) panel.hidden = !open;
+      if (open) openInfo.add(id); else openInfo.delete(id);
+      t.setAttribute('aria-expanded', String(open));
+      return;
+    }
     if (t.id === 'geo-go') return geocode();
     if (t.dataset.geo) {
       const r = JSON.parse(t.dataset.geo);
@@ -502,7 +539,7 @@ function renderResults(host: HTMLElement, years: YearSummary[], tot: YearSummary
     <section class="card"><h2>Capacity check</h2><div class="scroll-x"><table>
       <thead><tr><th>Item</th><th>Value</th><th style="text-align:left">Meaning</th></tr></thead><tbody>
       <tr><td>Heating demand at ${state.specs.designOutdoorTemp} °C</td><td>${n2(cap.designHeatLoadKw)} kW</td><td class="wrap">Steady-state loss, excluding reheat boost.</td></tr>
-      <tr><td>${state.specs.pumpCount} pumps at ${state.specs.designOutdoorTemp} °C</td><td class="${heatOk ? '' : 'bad'}">${n2(cap.pumpsAtDesignKw)} kW</td><td class="wrap">Interpolated capacity × capacity factor.</td></tr>
+      <tr><td>${state.specs.pumpCount} pump${state.specs.pumpCount === 1 ? "" : "s"} at ${state.specs.designOutdoorTemp} °C</td><td class="${heatOk ? '' : 'bad'}">${n2(cap.pumpsAtDesignKw)} kW</td><td class="wrap">Interpolated capacity × capacity factor.</td></tr>
       <tr><td>Max cooling demand (period mean)</td><td>${n2(cap.maxCoolDemandKw)} kW</td><td class="wrap">Incl. solar, ventilation and dehumidification.</td></tr>
       <tr><td>Heat not delivered</td><td class="${cap.heatUnmetKwh > 0 ? 'bad' : ''}">${n0(cap.heatUnmetKwh)} kWh</td><td class="wrap">Shortfall vs. demand at the indoor setpoint.</td></tr>
       <tr><td>Cooling not delivered</td><td class="${cap.coolUnmetKwh > 0 ? 'bad' : ''}">${n0(cap.coolUnmetKwh)} kWh</td><td class="wrap">Shortfall during cooling periods.</td></tr>
