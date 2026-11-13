@@ -17,6 +17,7 @@ A small browser app (TypeScript + Vite, no backend) that estimates how much elec
 | Hourly temperature, humidity, irradiance on N/E/S/W façades and the roof, sunrise and sunset | [Open-Meteo](https://open-meteo.com/) historical archive. The most recent days, which the archive does not have yet, come from the forecast API. |
 | Household electricity price per semester (all taxes included, by consumption band) | [Eurostat `nrg_pc204`](https://ec.europa.eu/eurostat/databrowser/view/nrg_pc204/default/table) for the selected country |
 | Address search | Open-Meteo geocoding |
+| "Use my location" place name | [BigDataCloud](https://www.bigdatacloud.com/free-api/free-reverse-geocode-to-city-api) free client-side reverse geocoding (coordinates rounded to ~1 km first) |
 
 The end date defaults to "yesterday", so the period keeps rolling forward. You can override the price for any semester, for example with the rate from your own bill. Semesters that have no Eurostat value use "my current tariff", or the latest Eurostat price if that field is left blank. Overrides are cleared when the country changes, because they belong to a bill from one country.
 

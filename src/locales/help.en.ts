@@ -14,7 +14,7 @@ export const help = {
   // ---------------------------------------------------------------- location & period
   location: {
     what: 'Where the building is. Hourly weather and sun data are downloaded for these coordinates.',
-    find: 'Search for your town or address. Or copy coordinates from a map (in Google Maps, right-click the house and click the numbers).',
+    find: 'Tap “Use my location” (your browser asks first), or search for your town or address. Or copy coordinates from a map (in Google Maps, right-click the house and click the numbers).',
   },
   countryCode: {
     what: 'Two-letter country code (e.g. DE, DK, IT) used to fetch household electricity prices from Eurostat.',

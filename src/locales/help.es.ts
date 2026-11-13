@@ -8,7 +8,7 @@ export const help: Help = {
   // ---------------------------------------------------------------- ubicación y periodo
   location: {
     what: 'Dónde está el edificio. Para estas coordenadas se descargan datos horarios de clima y radiación solar.',
-    find: 'Busca tu municipio o dirección. O copia las coordenadas de un mapa (en Google Maps, haz clic derecho sobre la casa y pulsa en los números).',
+    find: 'Pulsa «Usar mi ubicación» (el navegador pide permiso primero) o busca tu localidad o dirección. También puedes copiar las coordenadas de un mapa (en Google Maps, clic derecho en la casa y clic en los números).',
   },
   countryCode: {
     what: 'Código de país de dos letras (p. ej. ES, DE, IT) con el que se consultan en Eurostat los precios de la luz para hogares.',

@@ -8,7 +8,7 @@ export const help: Help = {
   // ---------------------------------------------------------------- lieu & période
   location: {
     what: 'L’emplacement du bâtiment. La météo horaire et les données d’ensoleillement sont téléchargées pour ces coordonnées.',
-    find: 'Recherchez votre commune ou votre adresse. Ou copiez les coordonnées depuis une carte (dans Google Maps, faites un clic droit sur la maison puis cliquez sur les chiffres).',
+    find: 'Touchez « Utiliser ma position » (le navigateur demande d’abord l’autorisation), ou recherchez votre commune ou adresse. Vous pouvez aussi copier les coordonnées depuis une carte (dans Google Maps, clic droit sur la maison puis clic sur les chiffres).',
   },
   countryCode: {
     what: 'Code pays à deux lettres (par ex. FR, BE, DE) utilisé pour récupérer les prix de l’électricité des ménages auprès d’Eurostat.',

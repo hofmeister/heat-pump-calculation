@@ -7,7 +7,7 @@ export const help: Help = {
   // ---------------------------------------------------------------- location & period
   location: {
     what: 'Dove si trova l’edificio. Per queste coordinate vengono scaricati i dati orari di meteo e irraggiamento solare.',
-    find: 'Cerca il tuo comune o indirizzo. Oppure copia le coordinate da una mappa (in Google Maps, clic destro sulla casa e clic sui numeri).',
+    find: 'Tocca «Usa la mia posizione» (il browser chiede prima il permesso) oppure cerca il tuo comune o indirizzo. In alternativa copia le coordinate da una mappa (in Google Maps, clic destro sulla casa e clic sui numeri).',
   },
   countryCode: {
     what: 'Codice paese di due lettere (es. DE, DK, IT) usato per scaricare da Eurostat i prezzi dell’elettricità per le famiglie.',

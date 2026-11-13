@@ -285,3 +285,14 @@ input.ai-changed { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(
   .ai-banner-actions { align-self: stretch; }
   .ai-banner-actions #ai-undo { flex: 1; }
 }
+
+/* ------------------------------------------------------------------ use my location */
+.geo-me { width: 100%; margin: 2px 0 2px; font-weight: 600; }
+.loc-first { margin: 0 0 6px; color: var(--text); }
+.loc-note { margin: 2px 0 8px; }
+@media (max-width: 900px) {
+  /* Language picker on its own line above the title so long names ("Automatica (Italiano)") never cover it. */
+  .top-actions { position: static; order: -1; width: 100%; justify-content: flex-end; }
+  .top h1 { padding-right: 0; }
+  .lang select { max-width: 100%; }
+}

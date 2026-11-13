@@ -215,6 +215,9 @@ function renderInputs() {
 
     <section class="card">
       <div class="lbl"><h2>${esc(t.sections.location)}</h2>${infoBtn('location', 'location', t.labels.location)}</div>${infoPanel('location', 'location')}
+      ${isExampleLocation() ? `<p class="help loc-first">${esc(t.inputs.locFirst)}</p>` : ''}
+      <button type="button" id="geo-me" class="geo-me ${isExampleLocation() ? 'primary' : ''}"><span aria-hidden="true">📍</span> ${esc(t.inputs.useMyLocation)}</button>
+      <p class="help loc-note">${esc(t.inputs.locNote)}</p>
       <div class="row"><input id="geo-q" placeholder="${esc(t.inputs.searchPlaceholder)}" value="" autocomplete="off"><button id="geo-go">${esc(t.inputs.search)}</button></div>
       <div class="geo-results" id="geo-results"></div>
       <p class="help">${esc(t.inputs.selected)} <b>${esc(s.location.name)}</b> (${s.location.latitude.toFixed(3)}, ${s.location.longitude.toFixed(3)}, ${esc(s.location.countryCode)})</p>
@@ -335,18 +338,8 @@ function bindInputs() {
       return;
     }
     if (t.id === 'geo-go') return geocode();
-    if (t.dataset.geo) {
-      const r = JSON.parse(t.dataset.geo);
-      const res = store.withLocation(state, r);
-      state = res.state;
-      eurostat = {}; priceSource = null;
-      loadPricesFromCache();
-      persist();
-      renderInputsKeepFocus();
-      recompute();
-      setStatus(fmt(res.clearedOverrides ? L().status.locationSetCleared : L().status.locationSet, { name: r.name }));
-      return;
-    }
+    if (t.id === 'geo-me') return void useMyLocation(t as HTMLButtonElement);
+    if (t.dataset.geo) return setLocation(JSON.parse(t.dataset.geo));
     if (t.id === 'areas-fill') {
       const jul = state.specs.solarAreas[6];
       state.specs.solarAreas = state.specs.solarAreas.map(() => ({ ...jul }));
@@ -428,6 +421,54 @@ function applyState(s: store.AppState, msg: string) {
   renderInputsKeepFocus();
   recompute();
   if (msg) setStatus(msg);
+}
+
+function setLocation(loc: store.AppState['location']) {
+  const res = store.withLocation(state, loc);
+  state = res.state;
+  eurostat = {}; priceSource = null;
+  loadPricesFromCache();
+  persist();
+  renderInputsKeepFocus();
+  recompute();
+  setStatus(fmt(res.clearedOverrides ? L().status.locationSetCleared : L().status.locationSet, { name: loc.name }));
+}
+
+/** Still on the built-in example location (first visit): nudge towards "Use my location". */
+function isExampleLocation(): boolean {
+  const d = store.defaultState().location;
+  return state.location.latitude === d.latitude && state.location.longitude === d.longitude;
+}
+
+/** Ask the browser for the current position (only when the user taps the button). */
+function useMyLocation(btn: HTMLButtonElement) {
+  const t = L().inputs;
+  if (!('geolocation' in navigator)) return setStatus(t.locUnsupported, true);
+  btn.disabled = true;
+  setStatus(t.locating);
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      // ~1 km is plenty for weather data (≈10 km grid) and keeps the exact home position private.
+      const latitude = Math.round(pos.coords.latitude * 100) / 100;
+      const longitude = Math.round(pos.coords.longitude * 100) / 100;
+      let name = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+      let countryCode = state.location.countryCode;
+      try {
+        const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?${new URLSearchParams({ latitude: String(latitude), longitude: String(longitude), localityLanguage: L().meta.htmlLang })}`);
+        const j = await res.json();
+        const place = [j.city || j.locality, j.principalSubdivision, j.countryName].filter(Boolean);
+        if (place.length) name = [...new Set(place)].join(', ');
+        if (/^[A-Z]{2}$/.test(j.countryCode ?? '')) countryCode = j.countryCode;
+      } catch { /* keep coordinates as the name */ }
+      btn.disabled = false;
+      setLocation({ name, latitude, longitude, countryCode });
+    },
+    (err) => {
+      btn.disabled = false;
+      setStatus(err.code === err.PERMISSION_DENIED ? t.locDenied : t.locFailed, true);
+    },
+    { enableHighAccuracy: false, timeout: 20000, maximumAge: 10 * 60 * 1000 },
+  );
 }
 
 async function geocode() {
