@@ -40,9 +40,15 @@ describe('pickLang', () => {
     expect(pickLang(null, ['es-MX'])).toBe('es');
     expect(pickLang(null, ['fr_CA'])).toBe('fr');
   });
-  it('uses the first supported browser language', () => {
-    expect(pickLang(null, ['da-DK', 'en-GB', 'it'])).toBe('en');
+  it('prefers the most specific supported language over English, wherever English is in the list', () => {
+    expect(pickLang(null, ['en', 'da', 'it'])).toBe('it');
+    expect(pickLang(null, ['en-US', 'es-ES'])).toBe('es');
+    expect(pickLang(null, ['da-DK', 'en-GB', 'it'])).toBe('it');
     expect(pickLang(null, ['de-DE', 'fr-FR'])).toBe('fr');
+  });
+  it('among several supported languages, keeps the browser’s order', () => {
+    expect(pickLang(null, ['en', 'fr', 'it'])).toBe('fr');
+    expect(pickLang(null, ['it-IT', 'fr-FR', 'en'])).toBe('it');
   });
   it('falls back to English', () => {
     expect(pickLang(null, ['da-DK', 'de'])).toBe('en');

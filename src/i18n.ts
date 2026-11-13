@@ -14,15 +14,16 @@ const KEY = 'hpc.lang.v2';
 const isLang = (l: unknown): l is Lang => typeof l === 'string' && Object.prototype.hasOwnProperty.call(LOCALES, l);
 
 /**
- * Pick the UI language: an explicit choice the user saved wins; otherwise the
- * first of the browser's preferred languages we support (so "da, en, it" gives
- * English); otherwise English.
+ * Pick the UI language: an explicit choice the user saved wins. Otherwise use
+ * the most specific language the browser offers: the first supported language
+ * in its list other than English, because many people keep English near the top
+ * as a generic fallback ("en, da, it" gives Italian). Everything else gets English.
  */
 export function pickLang(saved: string | null | undefined, browserLangs: readonly string[]): Lang {
   if (isLang(saved)) return saved;
   for (const tag of browserLangs) {
     const primary = String(tag).split(/[-_]/)[0].toLowerCase();
-    if (isLang(primary)) return primary;
+    if (primary !== 'en' && isLang(primary)) return primary;
   }
   return 'en';
 }

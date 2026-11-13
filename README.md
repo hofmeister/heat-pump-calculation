@@ -65,7 +65,7 @@ The inputs sit in the URL fragment (after `#`), which browsers never send to the
 
 ## Languages
 
-The UI and all help texts are available in English, Italian, French and Spanish (`src/locales/`). The language is detected from the browser (the first of its preferred languages that the app supports, e.g. `es-MX` → Spanish), and anything unsupported falls back to English. Picking a language in the header saves that choice locally; picking *Automatic* goes back to following the browser. English is the source: tests check that every translation has the same keys, placeholders and HTML tags.
+The UI and all help texts are available in English, Italian, French and Spanish (`src/locales/`). The language is detected from the browser. The app uses the most specific match: the first supported language in the browser's list other than English, wherever English sits (so `en, da, it` → Italian and `es-MX` → Spanish). If there's no such language, it uses English. Picking a language in the header saves that choice locally; picking *Automatic* goes back to following the browser. English is the source: tests check that every translation has the same keys, placeholders and HTML tags.
 
 ## AI agent tools (WebMCP)
 
